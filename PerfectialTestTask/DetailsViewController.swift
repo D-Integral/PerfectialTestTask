@@ -3,7 +3,7 @@
 //  PerfectialTestTask
 //
 //  Created by Dmytro Skorokhod on 12/9/16.
-//  Copyright © 2016 Dima Skorokhod. All rights reserved.
+//  Copyright © 2016 Dmytro Skorokhod. All rights reserved.
 //
 
 import UIKit
