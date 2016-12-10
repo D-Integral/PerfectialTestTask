@@ -93,12 +93,24 @@ class TableViewController: UITableViewController, UITextFieldDelegate {
 		
         let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
 		
-		DispatchQueue.global(qos: .userInitiated).async {
-			let url = URL(string: self.hits[indexPath.row]["previewURL"] as! String)
-			if let data = NSData(contentsOf: url!) {
-				DispatchQueue.main.async {
-					cell.imageView?.image = UIImage(data: data as Data)
-					cell.layoutSubviews()
+		let cache = NSCache<NSString, NSData>()
+		let cachdedData: Data
+		let key = "CachedImage" + String(indexPath.row)
+		
+		if let cachedVersion = cache.object(forKey: key as NSString) {
+			cachdedData = cachedVersion as Data
+			cell.imageView?.image = UIImage(data: cachdedData as Data)
+			cell.layoutSubviews()
+		} else {
+			// create it from scratch then store in the cache
+			DispatchQueue.global(qos: .userInitiated).async {
+				let url = URL(string: self.hits[indexPath.row]["previewURL"] as! String)
+				if let data = NSData(contentsOf: url!) {
+					cache.setObject(data, forKey: key as NSString)
+					DispatchQueue.main.async {
+						cell.imageView?.image = UIImage(data: data as Data)
+						cell.layoutSubviews()
+					}
 				}
 			}
 		}
@@ -141,13 +153,10 @@ class TableViewController: UITableViewController, UITextFieldDelegate {
 	// MARK: - Scroll view delegate
 	
 	override func scrollViewDidScroll(_ scrollView: UIScrollView) {
-		print("scrollViewDidScroll")
-		
 		let actualPosition = scrollView.contentOffset.y;
 		let loadMorePoint = scrollView.contentSize.height - self.tableView.frame.size.height * 2;
 		
 		if (actualPosition > loadMorePoint && self.textField.text == "") {
-			print("new items should be loaded")
 			self.requestImages(searchString: self.textField.text!,
 			                   page: self.lastLoadedPage + 1)
 		}
