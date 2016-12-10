@@ -12,6 +12,7 @@ class TableViewController: UITableViewController, UITextFieldDelegate {
 	
 	var hits: [[String: Any]] = []
 	var textField = UITextField()
+	var lastLoadedPage = 1
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,17 +22,24 @@ class TableViewController: UITableViewController, UITextFieldDelegate {
 
 		self.clearsSelectionOnViewWillAppear = true
 		
-		self.requestImages(searchString: "")
+		self.requestImages(searchString: "", page: 1)
     }
 	
-	func requestImages(searchString: String) {
-		let url = URL(string: "https://pixabay.com/api/?key=3777329-97c398c7e896d9c63f6ef1c0b&per_page=200&q="+searchString)
+	func requestImages(searchString: String, page: Int) {
+		let url = URL(string: "https://pixabay.com/api/?key=3777329-97c398c7e896d9c63f6ef1c0b&per_page=200&q="+searchString + "&page=" + String(page))
 		URLSession.shared.dataTask(with:url!, completionHandler: {(data, response, error) in
 			guard let data = data, error == nil else { return }
 			
 			do {
 				let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as! [String:Any]
-				self.hits = json["hits"] as? [[String: Any]] ?? []
+				
+				if page>1 && page>self.lastLoadedPage {
+					self.hits += json["hits"] as? [[String: Any]] ?? []
+					self.lastLoadedPage = page
+				} else if page == 1 {
+					self.hits = json["hits"] as? [[String: Any]] ?? []
+				}
+				
 				var index = 0
 				for hit: Dictionary in self.hits {
 					print(index)
@@ -125,7 +133,23 @@ class TableViewController: UITableViewController, UITextFieldDelegate {
 	// MARK: - Text field delegate
 	
 	func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-		self.requestImages(searchString: self.textField.text!)
+		self.requestImages(searchString: self.textField.text!,
+		                   page: 1)
 		return true
+	}
+	
+	// MARK: - Scroll view delegate
+	
+	override func scrollViewDidScroll(_ scrollView: UIScrollView) {
+		print("scrollViewDidScroll")
+		
+		let actualPosition = scrollView.contentOffset.y;
+		let loadMorePoint = scrollView.contentSize.height - self.tableView.frame.size.height * 2;
+		
+		if (actualPosition > loadMorePoint && self.textField.text == "") {
+			print("new items should be loaded")
+			self.requestImages(searchString: self.textField.text!,
+			                   page: self.lastLoadedPage + 1)
+		}
 	}
 }
