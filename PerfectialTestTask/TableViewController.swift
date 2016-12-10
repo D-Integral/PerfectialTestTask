@@ -11,7 +11,7 @@ import UIKit
 class TableViewController: UITableViewController, UITextFieldDelegate {
 	
 	var hits: [[String: Any]] = []
-	var textField = UITextField()
+	let textField = UITextField()
 	var lastLoadedPage = 1
 
     override func viewDidLoad() {
