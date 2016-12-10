@@ -8,18 +8,24 @@
 
 import UIKit
 
-class TableViewController: UITableViewController {
+class TableViewController: UITableViewController, UITextFieldDelegate {
 	
 	var hits: [[String: Any]] = []
+	var textField = UITextField()
 
     override func viewDidLoad() {
         super.viewDidLoad()
 		
 		self.tableView.register(UITableViewCell.classForCoder(), forCellReuseIdentifier:"reuseIdentifier")
+		self.tableView.register(UITableViewCell.classForCoder(), forCellReuseIdentifier:"searchCellIdentifier")
 
-         self.clearsSelectionOnViewWillAppear = true
+		self.clearsSelectionOnViewWillAppear = true
 		
-		let url = URL(string: "https://pixabay.com/api/?key=3777329-97c398c7e896d9c63f6ef1c0b&per_page=200")
+		self.requestImages(searchString: "")
+    }
+	
+	func requestImages(searchString: String) {
+		let url = URL(string: "https://pixabay.com/api/?key=3777329-97c398c7e896d9c63f6ef1c0b&per_page=200&q="+searchString)
 		URLSession.shared.dataTask(with:url!, completionHandler: {(data, response, error) in
 			guard let data = data, error == nil else { return }
 			
@@ -36,12 +42,15 @@ class TableViewController: UITableViewController {
 					index += 1
 				}
 				
-				self.tableView.reloadData()
+				DispatchQueue.main.sync {
+					self.tableView.reloadSections(NSIndexSet(index: 1) as IndexSet,
+					                              with: .none)
+				}
 			} catch let error as NSError {
 				print(error)
 			}
 		}).resume()
-    }
+	}
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
@@ -51,20 +60,35 @@ class TableViewController: UITableViewController {
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
+        return 2
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return self.hits.count
+		return 0 == section ? 1 : self.hits.count
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+		if 0 == indexPath.section {
+			let cell = tableView.dequeueReusableCell(withIdentifier: "searchCellIdentifier", for: indexPath)
+			
+			let tableViewWidth = self.tableView.frame.size.width
+			cell.contentView.addSubview(self.textField)
+			self.textField.frame = CGRect(x: 15,
+			                              y: 5,
+			                              width: tableViewWidth - 30,
+			                              height: 40)
+			self.textField.placeholder = "Search"
+			self.textField.delegate = self
+			
+			return cell
+		}
+		
         let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
 		
 		DispatchQueue.global(qos: .userInitiated).async {
 			let url = URL(string: self.hits[indexPath.row]["previewURL"] as! String)
 			if let data = NSData(contentsOf: url!) {
-				DispatchQueue.main.sync {
+				DispatchQueue.main.async {
 					cell.imageView?.image = UIImage(data: data as Data)
 					cell.layoutSubviews()
 				}
@@ -75,7 +99,7 @@ class TableViewController: UITableViewController {
     }
 
 	override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-		return self.hits[indexPath.row]["previewHeight"] as! CGFloat
+		return 0 == indexPath.section ? 50 : self.hits[indexPath.row]["previewHeight"] as! CGFloat
 	}
 	
     // MARK: - Table view delegate
@@ -98,4 +122,10 @@ class TableViewController: UITableViewController {
 		                                              animated:true)
 	}
 
+	// MARK: - Text field delegate
+	
+	func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+		self.requestImages(searchString: self.textField.text!)
+		return true
+	}
 }
