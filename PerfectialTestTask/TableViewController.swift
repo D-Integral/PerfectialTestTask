@@ -152,13 +152,21 @@ class TableViewController: UITableViewController, UITextFieldDelegate {
 	
 	// MARK: - Scroll view delegate
 	
+	var readyToLoadMore = false
+	
 	override func scrollViewDidScroll(_ scrollView: UIScrollView) {
 		let actualPosition = scrollView.contentOffset.y;
+		let readyToLoadMorePoint = scrollView.contentSize.height - self.tableView.frame.size.height * 4;
 		let loadMorePoint = scrollView.contentSize.height - self.tableView.frame.size.height * 2;
 		
-		if (actualPosition > loadMorePoint && self.textField.text == "") {
+		if actualPosition > readyToLoadMorePoint && actualPosition < loadMorePoint && self.readyToLoadMore == false {
+			self.readyToLoadMore = true
+		}
+		
+		if (actualPosition > loadMorePoint && self.textField.text == "" && self.readyToLoadMore == true) {
 			self.requestImages(searchString: self.textField.text!,
 			                   page: self.lastLoadedPage + 1)
+			self.readyToLoadMore = false
 		}
 	}
 }
